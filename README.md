@@ -131,6 +131,7 @@ projects\
 | [05. API](design/05-api.md) | エンドポイントの一覧と入出力 |
 | [06. 画面](design/06-screens.md) | 画面の一覧と動き |
 | [07. 公開（デプロイ）](design/07-deployment.md) | 環境変数、nginx（リバースプロキシ・HTTPS）、セキュリティヘッダー、ログ、バックアップ |
+| [08. ER図](design/08-er-diagram.md) | テーブルとテーブルどうしの関係の図（Mermaid） |
 
 ## 画面と API のつなぎ方
 
