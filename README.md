@@ -225,33 +225,6 @@ npm run nginx:stop     # nginx が残っていたら止める
 npx playwright test --headed   # ブラウザを表示しながら自動テスト
 ```
 
-## 開発時の nginx について
-
-- 設定は公開時と同じ `my-app-web/deploy/nginx/office-seat/` を使います。違うのは、ポート（8080）と HTTPS を使わないことだけです
-- nginx の作業フォルダ（設定・ログ）は `%LOCALAPPDATA%\office-seat-nginx` に作られます（日本語を含むパスを避けるため）。ログは `logs\access.log` と `logs\error.log`
-- `dist/` はジャンクションでつながっているので、自動のビルドの結果がそのまま返ります
-- 開発時のビルドにはソースマップが付くので、ブラウザの開発者ツールで元の `.vue` / `.ts` を見られます
-- nginx の場所が違うときは環境変数 `NGINX_PATH`、ポートを変えるときは `NGINX_PORT` で指定します
-
-## 画面の自動テスト
-
-`my-app-web/e2e/` にあります（Playwright、TypeScript）。テストごとに、一時フォルダの DB を使う API サーバーと、ビルドした画面のサーバーを起動します。
-画面は公開時と同じセキュリティヘッダー（CSP など）付きで開くので、CSP に違反した読み込みもエラーとして見つかります。
-
-API のリポジトリは隣のフォルダ（`../my-app`）にあり、その `.venv` に依存ライブラリが入っている必要があります。場所が違うときは環境変数で指定します。
-
-- `API_DIR`：API のリポジトリのフォルダ
-- `API_PYTHON`：API を動かす Python（既定は `API_DIR` の `.venv` の Python）
-
-## Vue の画面を追加・移行するとき
-
-1. `my-app-web` のルートに URL と同じパスの HTML（例：`admin/organization.html`）、`src/pages/` に入口（`.ts`）と画面（`.vue`）を作る
-2. `vite.config.ts` の `PAGES` に追加する
-3. `legacy/` の同じ画面の HTML と `legacy/js/pages/` の JS を削除する
-
-- 移行していない共通の処理（API の呼び出し・ヘッダー・ログイン確認など）は `@legacy/...` から読み込める
-- CSP でインラインのスクリプト・スタイルを禁止しているので、CSS はファイル（または `.vue` の `<style>`）に書く
-
 ## CI（GitHub Actions）
 
 `master` / `develop` / `feature/**` への push と、プルリクエストで自動実行します。
