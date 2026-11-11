@@ -1,10 +1,10 @@
-# オフィス座席・従業員管理システム
+# API（リポジトリ `my-app`）
 
 オフィスの座席配置、出勤・在席状況、プロフィール、技術スキルを一元管理する Web アプリケーションの **API**（FastAPI）です。
-画面（Vue 3 + Vite + TypeScript）は別のリポジトリ（`my-app-web`）にあります。
+画面（Vue 3 + Vite + TypeScript）は別のリポジトリ（`my-app-web`）にあります → [画面の README](../web/README.md)
 
-設計書は [docs/](docs/) にあります（要件・アーキテクチャ・ディレクトリ・DB・API・画面）。
-公開する手順は [docs/07-deployment.md](docs/07-deployment.md) を参照してください。
+設計書は [design/](../design/) にあります（要件・アーキテクチャ・ディレクトリ・DB・API・画面）。
+公開する手順は [design/07-deployment.md](../design/07-deployment.md) を参照してください。
 
 ## 技術構成
 
@@ -35,7 +35,7 @@ uvicorn app.main:app --reload --reload-dir app
 - API: http://127.0.0.1:8000/api/v1/...
 - API 仕様書: http://127.0.0.1:8000/docs
 - 停止: ターミナルで Ctrl + C
-- 画面は、画面のリポジトリで `npm run dev` を実行して http://127.0.0.1:5173 を開く（そちらの README を参照）
+- 画面は、画面のリポジトリで `npm run dev` を実行して http://127.0.0.1:5173 を開く（[画面の README](../web/README.md)）
 
 ## よく使うコマンド
 
@@ -49,14 +49,14 @@ python -m app.db.backup                # DB とプロフィール画像のバッ
 
 ## CI（GitHub Actions）
 
-GitHub に push すると、[.github/workflows/ci.yml](.github/workflows/ci.yml) が次を自動で実行します（`master` / `develop` / `feature/**` への push と、プルリクエスト）。
+GitHub に push すると、API のリポジトリの `.github/workflows/ci.yml` が次を自動で実行します（`master` / `develop` / `feature/**` への push と、プルリクエスト）。
 
 - lint と整形のチェック（ruff）
 - テスト（Python 3.12 と 3.14）。カバレッジが 90% 未満なら失敗
 
 画面の自動テスト（Playwright）は、画面のリポジトリの CI がこの API を起動して実行します。
 
-ライブラリと GitHub Actions の更新は、Dependabot が `develop` 向けのプルリクエストで知らせます（[.github/dependabot.yml](.github/dependabot.yml)）。
+ライブラリと GitHub Actions の更新は、Dependabot が `develop` 向けのプルリクエストで知らせます（`.github/dependabot.yml`）。
 
 ## ブランチ運用
 

@@ -34,7 +34,7 @@ my-app/
 └─ .env.example
 ```
 
-画面（Vue 3 + Vite + TypeScript）は別のリポジトリ（`my-app-web`）。ディレクトリはそちらの README を参照。
+画面（Vue 3 + Vite + TypeScript）は別のリポジトリ（`my-app-web`）。ディレクトリは [画面の README](../web/README.md#ディレクトリ) を参照。
 
 ## 命名規則
 - Python：ファイル・関数は `snake_case`、クラスは `PascalCase`。ファイル名は `<リソース>_repository.py` / `<リソース>_service.py`
