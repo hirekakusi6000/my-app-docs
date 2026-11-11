@@ -5,10 +5,10 @@ README と設計書はこのリポジトリにまとめています（コード�
 
 ## リポジトリ
 
-| リポジトリ | 内容 | 技術 |
+| リポジトリ | 内容 | 主な技術（詳しくは「技術スタック」） |
 |---|---|---|
-| `my-app` | API | Python 3.12+ / FastAPI / SQLite（標準ライブラリ `sqlite3`、生SQL）/ Uvicorn / pip |
-| `my-app-web` | 画面 | Vue 3 + Vite + TypeScript。移行前の画面は HTML / CSS / JavaScript（`legacy/`）で、画面ごとに順番に Vue へ移行中 |
+| `my-app` | API | Python / FastAPI / SQLite |
+| `my-app-web` | 画面 | Vue 3 + Vite + TypeScript、nginx の設定 |
 | `my-app-docs` | README と設計書（このリポジトリ） | Markdown |
 
 3つは同じフォルダに並べて置きます。画面の自動テストは、隣の `my-app` を使って API を起動します。
@@ -20,6 +20,105 @@ projects\
 ├─ my-app-docs\                  # ドキュメント
 └─ office-seat.code-workspace    # VS Code で3つをまとめて開くワークスペース
 ```
+
+## 技術スタック
+
+バージョンは `my-app` の `requirements.txt` / `requirements-dev.txt` と、`my-app-web` の `package.json` で固定しているもの。
+
+### 全体の構成
+
+```
+ブラウザ ──▶ nginx ──┬─ 画面（Vue 3 + TypeScript をビルドした静的ファイル）
+                     └─ /api ──▶ Uvicorn + FastAPI ──▶ SQLite
+```
+
+開発時は nginx の代わりに Vite の開発サーバーが入口になり、`/api` を FastAPI に転送する（[画面と API のつなぎ方](#画面と-api-のつなぎ方)）。
+
+### API（`my-app`）
+
+| 技術 | バージョン | 用途 |
+|---|---|---|
+| Python | 3.14（3.12 以上で動作） | 開発言語 |
+| FastAPI | 0.162.0 | Web フレームワーク（REST API、入力チェック、API 仕様書の自動生成） |
+| Uvicorn | 0.54.0 | ASGI サーバー（API の起動） |
+| Pydantic | 2.x（FastAPI に同梱） | API の入出力の型と入力チェック |
+| pydantic-settings | 2.16.2 | 設定の読み込み（環境変数・`.env`） |
+| SQLite（`sqlite3`） | Python 標準 | データベース。ORM は使わず生 SQL で操作 |
+| argon2-cffi | 25.1.0 | パスワードのハッシュ化（Argon2） |
+| email-validator | 2.3.0 | メールアドレスの形式チェック |
+| python-multipart | 0.0.33 | ファイルのアップロード（プロフィール画像・CSV） |
+
+### 画面（`my-app-web`）
+
+| 技術 | バージョン | 用途 |
+|---|---|---|
+| Vue | 3.5.45 | 画面のフレームワーク（Composition API、`<script setup>`） |
+| TypeScript | 5.9.3 | 型付きの JavaScript（`strict`） |
+| Vite | 8.3.8 | ビルド（複数ページ）と開発サーバー（`/api` の転送） |
+| @vitejs/plugin-vue | 6.0.10 | Vite で `.vue` ファイルを扱う |
+| vue-tsc | 3.3.14 | `.vue` を含めた型チェック |
+| Node.js | 22.12 以上 | ビルド・開発サーバー・テストの実行 |
+| HTML / CSS / JavaScript（`legacy/`） | ― | まだ Vue に移行していない画面（ES モジュール、Fetch API、`<dialog>`、CSS カスタムプロパティ） |
+| SVG | ― | オフィスマップの描画と編集（ドラッグ、範囲選択、回転） |
+
+### Web サーバー・公開
+
+| 技術 | バージョン | 用途 |
+|---|---|---|
+| nginx | 1.30（安定版） | 入口。HTTPS、画面のファイルの配信、`/api` の転送、セキュリティヘッダー（設定は `my-app-web/deploy/nginx/`） |
+| Let's Encrypt（certbot） | ― | HTTPS の証明書 |
+| systemd | ― | API（Uvicorn）を常駐させる |
+| Caddy | ― | nginx の代わりに使う場合の設定例のみ |
+
+### 設計・アーキテクチャ
+
+詳しくは [02. アーキテクチャ](design/02-architecture.md) を参照。
+
+| 項目 | 内容 |
+|---|---|
+| リポジトリの分け方 | API・画面・ドキュメントの3つ。画面と API は同じオリジンで動かす（CORS 不要） |
+| レイヤー構成（API） | router → service（業務ルール）→ repository（SQL）の一方向。DB アクセスと業務ロジックを分離 |
+| マルチテナント | すべてのデータを `organization_id` で組織ごとに分離。他の組織のデータは 404 |
+| マイグレーション | 番号付きの SQL ファイル（`migrations/`）＋ `PRAGMA user_version` による自作の仕組み |
+| 認証 | セッション Cookie（`HttpOnly`・`SameSite=Lax`）。トークンは DB にハッシュ値で保存 |
+| 認可 | FastAPI の `Depends` による権限チェック（マスター／一般、初回設定の完了） |
+| データの保護 | UNIQUE・CHECK・外部キーの制約（座席の重複防止など）、プレースホルダーによる SQL インジェクション対策 |
+| 画面の移行 | 1画面ずつ Vue に移行。移行前の部品（API の呼び出し・ヘッダーなど）は `@legacy` から再利用 |
+
+### セキュリティ・運用
+
+詳しくは [07. 公開](design/07-deployment.md) を参照。
+
+| 項目 | 内容 |
+|---|---|
+| セキュリティヘッダー | CSP（インラインのスクリプト・スタイルを禁止）、X-Frame-Options、HSTS（HTTPS 時）、Referrer-Policy、Permissions-Policy。API は FastAPI、画面は nginx が付ける |
+| 試行回数の制限 | ログインと新規登録（メモリ上のスライディングウィンドウ） |
+| ログ | Python 標準の `logging`。リクエストID、アクセスログ、監査ログ、ファイルのローテーション |
+| バックアップ | SQLite のバックアップ機能（動作中でも安全）＋世代管理（`python -m app.db.backup`） |
+
+### テスト・品質
+
+| 技術 | バージョン | 用途 |
+|---|---|---|
+| pytest | 9.2.0 | API のテスト（単体・API。カバレッジ約 97%） |
+| pytest-cov | 7.1.0 | カバレッジの計測（CI では 90% 未満で失敗） |
+| httpx（FastAPI の `TestClient`） | 0.28.1 | API のテスト |
+| Ruff | 0.17.4 | Python の lint と整形 |
+| Playwright（`@playwright/test`） | 1.65.0 | 画面の自動テスト（Chromium。テストごとに API と画面を起動し、CSP の違反も検出） |
+| vue-tsc | 3.3.14 | 画面の型チェック |
+| `check-legacy.mjs`（`node --check`） | ― | 移行前の画面の JavaScript の文法と、インラインスクリプトがないことの確認 |
+| `.gitattributes`（3つ共通）/ `.editorconfig`（`my-app`） | ― | 文字コード（UTF-8）・改行コード（LF）の統一 |
+
+### 開発環境・CI
+
+| 技術 | 用途 |
+|---|---|
+| pip / venv | Python のライブラリの管理と仮想環境 |
+| npm | 画面のライブラリの管理（`package-lock.json` で固定） |
+| VS Code（`office-seat.code-workspace`） | 3つのリポジトリをまとめて開く。API・画面・nginx の起動とテストをタスクで実行 |
+| Git | バージョン管理。`master` ← `develop` ← `feature/*`、`--no-ff` でマージ |
+| GitHub Actions | `my-app`：lint・テスト（Python 3.12 / 3.14）、`my-app-web`：型チェック・ビルド・画面の自動テスト |
+| Dependabot | ライブラリ（pip・npm）と GitHub Actions の更新のお知らせ |
 
 ## 設計書
 
