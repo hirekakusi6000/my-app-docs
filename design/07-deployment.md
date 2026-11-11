@@ -102,7 +102,7 @@ server {
 `max_size` / `client_max_body_size` は、プロフィール画像（2MB）と CSV（100KB）より少し大きくしておく。
 
 ## 5. セキュリティヘッダー
-API の応答には、アプリが付ける（`app/core/middleware.py`）。画面のファイルには、リバースプロキシで同じヘッダーを付ける（画面のリポジトリの `security-headers.ts` と README を参照）。
+API の応答には、アプリが付ける（`app/core/middleware.py`）。画面のファイルには、リバースプロキシで同じヘッダーを付ける（画面のリポジトリの `security-headers.ts` と [画面の README の「公開」](../web/README.md#公開) を参照）。
 
 | ヘッダー | 値 | 目的 |
 |---|---|---|

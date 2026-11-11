@@ -1,6 +1,6 @@
 # 04. DB設計
 
-実際の定義は [migrations/](../migrations/)（`0001_init.sql` から番号順に適用）。
+実際の定義は API のリポジトリの `migrations/`（`0001_init.sql` から番号順に適用）。
 
 | マイグレーション | 内容 |
 |---|---|
