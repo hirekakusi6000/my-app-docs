@@ -31,7 +31,7 @@ projects\
 | [04. データベース](design/04-database.md) | テーブル定義、マイグレーション |
 | [05. API](design/05-api.md) | エンドポイントの一覧と入出力 |
 | [06. 画面](design/06-screens.md) | 画面の一覧と動き |
-| [07. 公開（デプロイ）](design/07-deployment.md) | 環境変数、リバースプロキシ、セキュリティヘッダー、ログ、バックアップ |
+| [07. 公開（デプロイ）](design/07-deployment.md) | 環境変数、nginx（リバースプロキシ・HTTPS）、セキュリティヘッダー、ログ、バックアップ |
 
 ## 画面と API のつなぎ方
 
@@ -41,7 +41,8 @@ projects\
 |---|---|---|
 | 開発（`npm run dev`） | Vite の開発サーバー http://127.0.0.1:5173 | Vite が FastAPI（http://127.0.0.1:8000）に転送 |
 | 確認（`npm run preview`） | ビルドした `dist/` http://127.0.0.1:4173 | 同上 |
-| 公開 | リバースプロキシが `dist/` を配信 | リバースプロキシが FastAPI に転送（[07. 公開](design/07-deployment.md)） |
+| 確認（`npm run nginx:start`） | nginx が `dist/` を配信 http://127.0.0.1:8080 | nginx が FastAPI に転送 |
+| 公開 | nginx が `dist/` を配信（HTTPS） | nginx が FastAPI に転送（[07. 公開](design/07-deployment.md)） |
 
 API の URL は、画面のリポジトリで環境変数 `API_URL` を設定すると変えられます（既定は `http://127.0.0.1:8000`）。
 
@@ -116,8 +117,31 @@ npm run preview        # ビルドした画面を、公開時と同じセキュ�
 npm run typecheck      # 型チェックだけ
 npm run check:legacy   # 移行前の画面の確認（文法・インラインスクリプト）
 npm run test:e2e       # 画面の自動テスト（ビルドしてから実行）
+npm run nginx:start    # nginx で公開時と同じ構成を起動（http://127.0.0.1:8080）
+npm run nginx:stop     # nginx を止める
+npm run nginx:reload   # nginx の設定を読み込み直す
 npx playwright test --headed   # ブラウザを表示しながら自動テスト
 ```
+
+## nginx で公開時と同じ構成を試す
+
+公開時の入口は nginx です（[07. 公開](design/07-deployment.md)）。ローカルでも、公開時と同じ設定ファイル（`my-app-web/deploy/nginx/office-seat/`）で試せます。
+
+1. nginx for Windows（[nginx.org](https://nginx.org/en/download.html) の Stable 版の zip）を `%LOCALAPPDATA%\Programs\nginx-<版>\` に展開する（初回のみ）
+2. API を起動しておく（http://127.0.0.1:8000）
+3. 画面のリポジトリで実行する
+
+```powershell
+cd my-app-web
+npm run build
+npm run nginx:start
+```
+
+ブラウザで http://127.0.0.1:8080 を開きます。止めるときは `npm run nginx:stop`。
+
+- nginx の作業フォルダ（設定・ログ）は `%LOCALAPPDATA%\office-seat-nginx` に作られます（日本語を含むパスを避けるため）。ログは `logs\access.log` と `logs\error.log`
+- `dist/` はつながっているので、`npm run build` し直せば再読み込みで反映されます。`deploy/nginx/` の設定を変えたら `npm run nginx:reload`
+- nginx の場所が違うときは環境変数 `NGINX_PATH`、ポートを変えるときは `NGINX_PORT` で指定します
 
 ## 画面の自動テスト
 

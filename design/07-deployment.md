@@ -58,22 +58,56 @@ User=office-seat
 WantedBy=multi-user.target
 ```
 
-## 4. リバースプロキシと HTTPS
-### Caddy（おすすめ：証明書を自動で取得・更新する）
+## 4. リバースプロキシと HTTPS（nginx）
+nginx が入口になり、HTTPS・画面のファイル（`dist/`）・`/api` の転送をまとめて受け持つ。
+
+```
+ブラウザ ──▶ nginx（443, HTTPS）──┬─ 画面（dist/ のファイル。セキュリティヘッダーを付ける）
+                                  └─ /api と /docs だけ ──▶ Uvicorn + FastAPI（127.0.0.1:8000）
+```
+
+### 設定ファイル（`my-app-web/deploy/nginx/`）
+| ファイル | 置き場所（公開サーバー） | 内容 |
+|---|---|---|
+| `office-seat/http.conf` | `/etc/nginx/office-seat/` | API サーバーの場所（upstream）、HSTS の値（HTTPS のときだけ） |
+| `office-seat/app.conf` | `/etc/nginx/office-seat/` | `/api` の転送、画面のファイルの配信、キャッシュの設定 |
+| `office-seat/security-headers.conf` | `/etc/nginx/office-seat/` | 画面のセキュリティヘッダー（`security-headers.ts` と同じ値） |
+| `sites/office-seat.conf` | `/etc/nginx/sites-available/` | サイトの設定（http → https の転送、証明書、`dist/` の場所） |
+
+ローカルでも同じ `office-seat/` の設定を使って試せる（[README の「nginx で公開時と同じ構成を試す」](../README.md#nginx-で公開時と同じ構成を試す)）。
+
+### 公開サーバーへの置き方（Debian / Ubuntu の例）
+```bash
+sudo apt install nginx certbot
+# 画面のビルド結果を置く
+(cd my-app-web && npm ci && npm run build)
+sudo mkdir -p /srv/office-web && sudo cp -r my-app-web/dist /srv/office-web/
+# nginx の設定を置く（sites/office-seat.conf の server_name・証明書のパスを書き換えてから）
+sudo cp -r my-app-web/deploy/nginx/office-seat /etc/nginx/office-seat
+sudo cp my-app-web/deploy/nginx/sites/office-seat.conf /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/office-seat.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+- 証明書は Let's Encrypt（certbot）で取得する。`/.well-known/acme-challenge/` は http のまま `/var/www/certbot` から返す設定にしてある
+- `client_max_body_size 3m`：プロフィール画像（2MB）と CSV（100KB）より少し大きくしてある
+- `X-Forwarded-For` は利用者が送ってきた値に追記せず、nginx が見た IP で上書きする（Uvicorn の `--proxy-headers --forwarded-allow-ips 127.0.0.1` と組み合わせて、ログイン回数制限に本当の IP を使う）
+- キャッシュ：ファイル名にハッシュが入る `/assets/vue/` は1年、それ以外の画面は `no-cache`（毎回確認し、変わっていなければ 304）
+- `server_tokens off`：エラー画面などに nginx のバージョンを出さない
+
+### Caddy を使う場合（証明書を自動で取得・更新する）
+nginx の代わりに使える。画面のセキュリティヘッダーは `office-seat/security-headers.conf` と同じ値を付ける。
 ```
 seat.example.com {
-    # API だけをこのアプリに転送する
     handle /api/* {
         reverse_proxy 127.0.0.1:8000
         request_body {
             max_size 3MB
         }
     }
-    # 画面（my-app-web で npm ci && npm run build して作った dist/）
     handle {
         root * /srv/office-web/dist
         file_server
-        # 画面のセキュリティヘッダー（my-app-web の security-headers.ts と同じ）
         header {
             Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
             X-Content-Type-Options nosniff
@@ -88,41 +122,8 @@ seat.example.com {
 }
 ```
 
-### nginx の場合
-```nginx
-server {
-    listen 443 ssl;
-    server_name seat.example.com;
-    # ssl_certificate / ssl_certificate_key は Let's Encrypt（certbot）などで用意する
-    client_max_body_size 3m;
-
-    # 画面（my-app-web で npm ci && npm run build して作った dist/）
-    location / {
-        root /srv/office-web/dist;
-        # 画面のセキュリティヘッダー（my-app-web の security-headers.ts と同じ）
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
-        add_header X-Content-Type-Options nosniff always;
-        add_header X-Frame-Options DENY always;
-        add_header Referrer-Policy same-origin always;
-        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-        add_header Cross-Origin-Opener-Policy same-origin always;
-        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-        add_header Cache-Control no-cache;
-    }
-
-    # API だけをこのアプリに転送する
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-`max_size` / `client_max_body_size` は、プロフィール画像（2MB）と CSV（100KB）より少し大きくしておく。
-
 ## 5. セキュリティヘッダー
-API の応答には、アプリが付ける（`app/core/middleware.py`）。画面のファイルには、リバースプロキシで同じヘッダーを付ける（上の Caddy・nginx の例。値は画面のリポジトリの `security-headers.ts` と同じ）。
+API の応答には、アプリが付ける（`app/core/middleware.py`）。画面のファイルには、nginx が同じヘッダーを付ける（`office-seat/security-headers.conf`。値は画面のリポジトリの `security-headers.ts` と同じ）。
 
 | ヘッダー | 値 | 目的 |
 |---|---|---|
@@ -173,6 +174,7 @@ Windows ではタスクスケジューラに `.venv\Scripts\python.exe -m app.db
 - [ ] HTTPS で開け、`http://` は `https://` に転送される
 - [ ] `--proxy-headers --forwarded-allow-ips` を設定し、ログの IP が利用者の IP になっている
 - [ ] `--workers 1` で起動している
+- [ ] `sudo nginx -t` が通り、画面の応答に CSP などのヘッダーが付いている（`curl -I https://<ドメイン>/login.html`）
 - [ ] 画面（画面のリポジトリでビルドした `dist/`）がリバースプロキシから配信され、`/api/` だけがこのアプリに転送されている
 - [ ] `data/` が永続ディスク上にあり、再起動しても消えない
 - [ ] バックアップが毎日作られ、別の場所にも複製されている。復元を一度試した
