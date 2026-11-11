@@ -1,5 +1,6 @@
 # 03. ディレクトリ構成
 
+## API（`my-app`）
 ```
 my-app/
 ├─ app/
@@ -34,7 +35,33 @@ my-app/
 └─ .env.example
 ```
 
-画面（Vue 3 + Vite + TypeScript）は別のリポジトリ（`my-app-web`）。ディレクトリは [画面の README](../web/README.md#ディレクトリ) を参照。
+## 画面（`my-app-web`）
+```
+my-app-web/
+├─ admin/*.html               # Vue の画面の入口（URL と同じパス）
+├─ src/
+│  ├─ pages/                  # 画面ごとの入口（.ts）と画面（.vue）
+│  ├─ api/                    # API の呼び出し（型付き）
+│  ├─ lib/                    # 共通の処理
+│  └─ types/                  # API の応答の型
+├─ legacy/                    # 移行前の画面（そのまま dist/ にコピーされる）
+│  ├─ *.html / admin/*.html   # 画面
+│  ├─ css/                    # base.css, components.css, map.css
+│  └─ js/                     # api/・components/・lib/・pages/
+├─ e2e/                       # 画面の自動テスト（Playwright）
+├─ scripts/                   # 確認用のスクリプト（check-legacy.mjs）
+├─ vite.config.ts             # ビルド・開発サーバーの設定（PAGES、/api の転送）
+├─ security-headers.ts        # CSP などのセキュリティヘッダー
+├─ playwright.config.ts
+└─ package.json / package-lock.json
+```
+
+## ドキュメント（`my-app-docs`）
+```
+my-app-docs/
+├─ README.md                  # 全体の案内・開発の手順
+└─ design/                    # 設計書（01〜07）
+```
 
 ## 命名規則
 - Python：ファイル・関数は `snake_case`、クラスは `PascalCase`。ファイル名は `<リソース>_repository.py` / `<リソース>_service.py`

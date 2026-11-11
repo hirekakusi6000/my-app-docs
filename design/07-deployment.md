@@ -69,10 +69,21 @@ seat.example.com {
             max_size 3MB
         }
     }
-    # 画面（画面のリポジトリでビルドした dist/）。セキュリティヘッダーは画面のリポジトリの README を参照
+    # 画面（my-app-web で npm ci && npm run build して作った dist/）
     handle {
         root * /srv/office-web/dist
         file_server
+        # 画面のセキュリティヘッダー（my-app-web の security-headers.ts と同じ）
+        header {
+            Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+            X-Content-Type-Options nosniff
+            X-Frame-Options DENY
+            Referrer-Policy same-origin
+            Permissions-Policy "camera=(), microphone=(), geolocation=()"
+            Cross-Origin-Opener-Policy same-origin
+            Strict-Transport-Security "max-age=31536000; includeSubDomains"
+            Cache-Control no-cache
+        }
     }
 }
 ```
@@ -85,9 +96,18 @@ server {
     # ssl_certificate / ssl_certificate_key は Let's Encrypt（certbot）などで用意する
     client_max_body_size 3m;
 
-    # 画面（画面のリポジトリでビルドした dist/）。セキュリティヘッダーは画面のリポジトリの README を参照
+    # 画面（my-app-web で npm ci && npm run build して作った dist/）
     location / {
         root /srv/office-web/dist;
+        # 画面のセキュリティヘッダー（my-app-web の security-headers.ts と同じ）
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy same-origin always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Cross-Origin-Opener-Policy same-origin always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control no-cache;
     }
 
     # API だけをこのアプリに転送する
@@ -102,7 +122,7 @@ server {
 `max_size` / `client_max_body_size` は、プロフィール画像（2MB）と CSV（100KB）より少し大きくしておく。
 
 ## 5. セキュリティヘッダー
-API の応答には、アプリが付ける（`app/core/middleware.py`）。画面のファイルには、リバースプロキシで同じヘッダーを付ける（画面のリポジトリの `security-headers.ts` と [画面の README の「公開」](../web/README.md#公開) を参照）。
+API の応答には、アプリが付ける（`app/core/middleware.py`）。画面のファイルには、リバースプロキシで同じヘッダーを付ける（上の Caddy・nginx の例。値は画面のリポジトリの `security-headers.ts` と同じ）。
 
 | ヘッダー | 値 | 目的 |
 |---|---|---|
