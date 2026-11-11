@@ -5,7 +5,7 @@
 [ブラウザ (PC)]  Vue 3 + TypeScript（移行前の画面は HTML / CSS / JS）、マップは SVG で描画
    │  fetch (JSON) ＋ セッション Cookie、30秒ごとのポーリング
    ▼
-[リバースプロキシ（Caddy など）]  ※開発時は Vite の開発サーバーが同じ役割
+[nginx]  ※開発時も同じ設定の nginx（http://127.0.0.1:8080）
  ├─ /               → 画面ファイル（画面のリポジトリでビルドした dist/）
  └─ /api/...        ↓
 [Uvicorn]

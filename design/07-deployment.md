@@ -74,7 +74,7 @@ nginx が入口になり、HTTPS・画面のファイル（`dist/`）・`/api` �
 | `office-seat/security-headers.conf` | `/etc/nginx/office-seat/` | 画面のセキュリティヘッダー（`security-headers.ts` と同じ値） |
 | `sites/office-seat.conf` | `/etc/nginx/sites-available/` | サイトの設定（http → https の転送、証明書、`dist/` の場所） |
 
-ローカルでも同じ `office-seat/` の設定を使って試せる（[README の「nginx で公開時と同じ構成を試す」](../README.md#nginx-で公開時と同じ構成を試す)）。
+開発時（`npm run dev`）も同じ `office-seat/` の設定で nginx を動かす（[README の「開発時の nginx について」](../README.md#開発時の-nginx-について)）。
 
 ### 公開サーバーへの置き方（Debian / Ubuntu の例）
 ```bash
