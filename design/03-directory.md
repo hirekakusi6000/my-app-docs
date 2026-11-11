@@ -49,7 +49,8 @@ my-app-web/
 │  ├─ css/                    # base.css, components.css, map.css
 │  └─ js/                     # api/・components/・lib/・pages/
 ├─ e2e/                       # 画面の自動テスト（Playwright）
-├─ scripts/                   # 確認用のスクリプト（check-legacy.mjs）
+├─ deploy/nginx/              # nginx の設定（office-seat/ は公開時もローカルでも使う、sites/ は公開サーバー用）
+├─ scripts/                   # check-legacy.mjs（移行前の画面の確認）、nginx.mjs（ローカルの nginx の起動・停止）
 ├─ vite.config.ts             # ビルド・開発サーバーの設定（PAGES、/api の転送）
 ├─ security-headers.ts        # CSP などのセキュリティヘッダー
 ├─ playwright.config.ts
