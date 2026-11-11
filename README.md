@@ -32,7 +32,7 @@ projects\
                      └─ /api ──▶ Uvicorn + FastAPI ──▶ SQLite
 ```
 
-開発時は nginx の代わりに Vite の開発サーバーが入口になり、`/api` を FastAPI に転送する（[画面と API のつなぎ方](#画面と-api-のつなぎ方)）。
+開発時も公開時と同じ nginx が入口になる（違いは HTTPS かどうかとポートだけ。[画面と API のつなぎ方](#画面と-api-のつなぎ方)）。
 
 ### API（`my-app`）
 
@@ -54,10 +54,10 @@ projects\
 |---|---|---|
 | Vue | 3.5.45 | 画面のフレームワーク（Composition API、`<script setup>`） |
 | TypeScript | 5.9.3 | 型付きの JavaScript（`strict`） |
-| Vite | 8.3.8 | ビルド（複数ページ）と開発サーバー（`/api` の転送） |
+| Vite | 8.3.8 | ビルド（複数ページ）。開発時は保存するたびに自動でビルドし直す。画面の自動テストでは preview で画面を返す |
 | @vitejs/plugin-vue | 6.0.10 | Vite で `.vue` ファイルを扱う |
 | vue-tsc | 3.3.14 | `.vue` を含めた型チェック |
-| Node.js | 22.12 以上 | ビルド・開発サーバー・テストの実行 |
+| Node.js | 22.12 以上 | ビルド・テスト・開発用の起動スクリプトの実行 |
 | HTML / CSS / JavaScript（`legacy/`） | ― | まだ Vue に移行していない画面（ES モジュール、Fetch API、`<dialog>`、CSS カスタムプロパティ） |
 | SVG | ― | オフィスマップの描画と編集（ドラッグ、範囲選択、回転） |
 
@@ -65,7 +65,7 @@ projects\
 
 | 技術 | バージョン | 用途 |
 |---|---|---|
-| nginx | 1.30（安定版） | 入口。HTTPS、画面のファイルの配信、`/api` の転送、セキュリティヘッダー（設定は `my-app-web/deploy/nginx/`） |
+| nginx | 1.30（安定版） | 入口（開発時も公開時も）。画面のファイルの配信、`/api` の転送、セキュリティヘッダー、公開時は HTTPS（設定は `my-app-web/deploy/nginx/`） |
 | Let's Encrypt（certbot） | ― | HTTPS の証明書 |
 | systemd | ― | API（Uvicorn）を常駐させる |
 | Caddy | ― | nginx の代わりに使う場合の設定例のみ |
@@ -136,14 +136,15 @@ projects\
 
 画面と API は**同じオリジン**（同じドメイン・ポート）で動かします。ログインの Cookie と CSP をそのまま使え、CORS の設定も要りません。
 
+開発時も公開時も、入口は同じ nginx の設定（`my-app-web/deploy/nginx/office-seat/`）です。開発中から CSP などのセキュリティヘッダーが公開時と同じように付くので、違反があればすぐ分かります。
+
 | 環境 | 画面 | `/api` |
 |---|---|---|
-| 開発（`npm run dev`） | Vite の開発サーバー http://127.0.0.1:5173 | Vite が FastAPI（http://127.0.0.1:8000）に転送 |
-| 確認（`npm run preview`） | ビルドした `dist/` http://127.0.0.1:4173 | 同上 |
-| 確認（`npm run nginx:start`） | nginx が `dist/` を配信 http://127.0.0.1:8080 | nginx が FastAPI に転送 |
+| 開発（`npm run dev`） | nginx が `dist/` を配信 http://127.0.0.1:8080（保存するたびに自動でビルドし直す） | nginx が FastAPI（http://127.0.0.1:8000）に転送 |
 | 公開 | nginx が `dist/` を配信（HTTPS） | nginx が FastAPI に転送（[07. 公開](design/07-deployment.md)） |
+| 画面の自動テスト | Vite の preview が `dist/` を配信（同じセキュリティヘッダー付き） | Vite がテスト用の FastAPI に転送 |
 
-API の URL は、画面のリポジトリで環境変数 `API_URL` を設定すると変えられます（既定は `http://127.0.0.1:8000`）。
+自動テストだけ nginx を使わないのは、CI（GitHub Actions）に nginx を入れずに済ませるためです。
 
 ## ローカル開発環境の構築（Windows / PowerShell）
 
@@ -167,12 +168,15 @@ DB は起動時に自動で作成・マイグレーションされます。
 
 ### 画面（`my-app-web`）
 
-Node.js 22.12 以上が必要です。
+Node.js 22.12 以上と nginx が必要です。
+
+1. nginx for Windows（[nginx.org](https://nginx.org/en/download.html) の Stable 版の zip）を `%LOCALAPPDATA%\Programs\nginx-<版>\` に展開する
+2. ライブラリと、画面の自動テスト用のブラウザを入れる
 
 ```powershell
 cd my-app-web
 npm install
-npx playwright install chromium   # 画面の自動テスト用のブラウザ（初回のみ）
+npx playwright install chromium
 ```
 
 ## 起動
@@ -191,9 +195,10 @@ cd my-app-web
 npm run dev
 ```
 
-- 画面: http://127.0.0.1:5173 （Vue の画面は保存するとすぐ反映される）
-- API 仕様書: http://127.0.0.1:8000/docs
-- 停止: それぞれのターミナルで Ctrl + C
+- 画面: http://127.0.0.1:8080 （`npm run dev` が、ビルド → nginx の起動 → 保存するたびに自動でビルドし直す、までを行う。ブラウザは再読み込みで反映）
+- API 仕様書: http://127.0.0.1:8000/docs （nginx 経由の http://127.0.0.1:8080/docs でも開ける）
+- 停止: それぞれのターミナルで Ctrl + C（`npm run dev` を止めると nginx も止まる）
+- VS Code のタスクをゴミ箱のボタンで終わらせると nginx が残ることがあります。そのときは「nginx を止める」タスクか `npm run nginx:stop` で止めます
 
 ## よく使うコマンド
 
@@ -210,36 +215,22 @@ python -m app.db.backup                # DB とプロフィール画像のバッ
 ### 画面（`my-app-web`）
 
 ```powershell
-npm run dev            # 開発サーバー
-npm run build          # 型チェックとビルド（dist/）
-npm run preview        # ビルドした画面を、公開時と同じセキュリティヘッダー付きで確認
+npm run dev            # 開発用の起動（ビルド → nginx → 保存するたびに自動でビルド。http://127.0.0.1:8080）
+npm run build          # 型チェックとビルド（公開用の dist/）
 npm run typecheck      # 型チェックだけ
 npm run check:legacy   # 移行前の画面の確認（文法・インラインスクリプト）
 npm run test:e2e       # 画面の自動テスト（ビルドしてから実行）
-npm run nginx:start    # nginx で公開時と同じ構成を起動（http://127.0.0.1:8080）
-npm run nginx:stop     # nginx を止める
-npm run nginx:reload   # nginx の設定を読み込み直す
+npm run nginx:reload   # deploy/nginx/ の設定を変えたあと、nginx に読み込み直させる
+npm run nginx:stop     # nginx が残っていたら止める
 npx playwright test --headed   # ブラウザを表示しながら自動テスト
 ```
 
-## nginx で公開時と同じ構成を試す
+## 開発時の nginx について
 
-公開時の入口は nginx です（[07. 公開](design/07-deployment.md)）。ローカルでも、公開時と同じ設定ファイル（`my-app-web/deploy/nginx/office-seat/`）で試せます。
-
-1. nginx for Windows（[nginx.org](https://nginx.org/en/download.html) の Stable 版の zip）を `%LOCALAPPDATA%\Programs\nginx-<版>\` に展開する（初回のみ）
-2. API を起動しておく（http://127.0.0.1:8000）
-3. 画面のリポジトリで実行する
-
-```powershell
-cd my-app-web
-npm run build
-npm run nginx:start
-```
-
-ブラウザで http://127.0.0.1:8080 を開きます。止めるときは `npm run nginx:stop`。
-
+- 設定は公開時と同じ `my-app-web/deploy/nginx/office-seat/` を使います。違うのは、ポート（8080）と HTTPS を使わないことだけです
 - nginx の作業フォルダ（設定・ログ）は `%LOCALAPPDATA%\office-seat-nginx` に作られます（日本語を含むパスを避けるため）。ログは `logs\access.log` と `logs\error.log`
-- `dist/` はつながっているので、`npm run build` し直せば再読み込みで反映されます。`deploy/nginx/` の設定を変えたら `npm run nginx:reload`
+- `dist/` はジャンクションでつながっているので、自動のビルドの結果がそのまま返ります
+- 開発時のビルドにはソースマップが付くので、ブラウザの開発者ツールで元の `.vue` / `.ts` を見られます
 - nginx の場所が違うときは環境変数 `NGINX_PATH`、ポートを変えるときは `NGINX_PORT` で指定します
 
 ## 画面の自動テスト
