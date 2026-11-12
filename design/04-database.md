@@ -8,6 +8,8 @@
 | `0002_drop_troubles.sql` | 困りごと機能の削除に伴い `troubles` テーブルを削除 |
 
 ## テーブルの関係
+図は [08. ER図](08-er-diagram.md) を参照。
+
 ```
 organizations ─┬─< users ─┬─< sessions
                │          ├── profiles (1:1) ── default_seat_id → furniture
