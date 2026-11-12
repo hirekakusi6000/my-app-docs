@@ -2,7 +2,7 @@
 
 ## 全体の構成
 ```
-[ブラウザ (PC)]  Vue 3 + TypeScript（移行前の画面は HTML / CSS / JS）、マップは SVG で描画
+[ブラウザ (PC)]  Vue 3 + TypeScript（1画面ずつの HTML）、マップは SVG で描画
    │  fetch (JSON) ＋ セッション Cookie、30秒ごとのポーリング
    ▼
 [nginx]  ※開発時も同じ設定の nginx（http://127.0.0.1:8080）

@@ -58,7 +58,7 @@ projects\
 | @vitejs/plugin-vue | 6.0.10 | Vite で `.vue` ファイルを扱う |
 | vue-tsc | 3.3.14 | `.vue` を含めた型チェック |
 | Node.js | 22.12 以上 | ビルド・テスト・開発用の起動スクリプトの実行 |
-| HTML / CSS / JavaScript（`legacy/`） | ― | まだ Vue に移行していない画面（ES モジュール、Fetch API、`<dialog>`、CSS カスタムプロパティ） |
+| HTML / CSS | ― | 画面ごとの入口の HTML（マルチページ）、`<dialog>`、CSS カスタムプロパティ |
 | SVG | ― | オフィスマップの描画と編集（ドラッグ、範囲選択、回転） |
 
 ### Web サーバー・公開
@@ -83,7 +83,7 @@ projects\
 | 認証 | セッション Cookie（`HttpOnly`・`SameSite=Lax`）。トークンは DB にハッシュ値で保存 |
 | 認可 | FastAPI の `Depends` による権限チェック（マスター／一般、初回設定の完了） |
 | データの保護 | UNIQUE・CHECK・外部キーの制約（座席の重複防止など）、プレースホルダーによる SQL インジェクション対策 |
-| 画面の移行 | 1画面ずつ Vue に移行。移行前の部品（API の呼び出し・ヘッダーなど）は `@legacy` から再利用 |
+| 画面の構成 | 1画面ずつの HTML（マルチページ）。URL は `/map.html` など。画面の入口でログインと権限を確認してから Vue の画面を表示する |
 
 ### セキュリティ・運用
 
@@ -106,7 +106,7 @@ projects\
 | Ruff | 0.17.4 | Python の lint と整形 |
 | Playwright（`@playwright/test`） | 1.65.0 | 画面の自動テスト（Chromium。テストごとに API と画面を起動し、CSP の違反も検出） |
 | vue-tsc | 3.3.14 | 画面の型チェック |
-| `check-legacy.mjs`（`node --check`） | ― | 移行前の画面の JavaScript の文法と、インラインスクリプトがないことの確認 |
+| `check-html.mjs` | ― | HTML にインラインスクリプトや style 属性がないことの確認（CSP のため） |
 | `.gitattributes`（3つ共通）/ `.editorconfig`（`my-app`） | ― | 文字コード（UTF-8）・改行コード（LF）の統一 |
 
 ### 開発環境・CI
@@ -219,7 +219,7 @@ python -m app.db.backup                # DB とプロフィール画像のバッ
 npm run dev            # 開発用の起動（ビルド → nginx → 保存するたびに自動でビルド。http://127.0.0.1:8080）
 npm run build          # 型チェックとビルド（公開用の dist/）
 npm run typecheck      # 型チェックだけ
-npm run check:legacy   # 移行前の画面の確認（文法・インラインスクリプト）
+npm run check:html     # HTML の確認（インラインスクリプトがないこと）
 npm run test:e2e       # 画面の自動テスト（ビルドしてから実行）
 npm run nginx:reload   # deploy/nginx/ の設定を変えたあと、nginx に読み込み直させる
 npm run nginx:stop     # nginx が残っていたら止める
@@ -233,7 +233,7 @@ npx playwright test --headed   # ブラウザを表示しながら自動テス�
 | リポジトリ | 内容 |
 |---|---|
 | `my-app` | lint と整形のチェック（ruff）、テスト（Python 3.12 と 3.14。カバレッジが 90% 未満なら失敗） |
-| `my-app-web` | 移行前の画面の確認、型チェック・ビルド、画面の自動テスト（Playwright。失敗時はスクリーンショットと操作の記録を保存） |
+| `my-app-web` | HTML の確認、型チェック・ビルド、画面の自動テスト（Playwright。失敗時はスクリーンショットと操作の記録を保存） |
 
 画面の自動テストでは、API のリポジトリ（既定 `<オーナー>/my-app` の `develop`）を取得して起動します。
 変えるときは `my-app-web` のリポジトリの変数 `API_REPOSITORY` / `API_REF` を、API のリポジトリが非公開のときはシークレット `API_REPOSITORY_TOKEN` を設定します。

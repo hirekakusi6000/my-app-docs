@@ -38,20 +38,20 @@ my-app/
 ## 画面（`my-app-web`）
 ```
 my-app-web/
-├─ admin/*.html               # Vue の画面の入口（URL と同じパス）
+├─ *.html / admin/*.html      # 画面の入口（URL と同じパス。中身は <div id="app"> とスクリプトの読み込みだけ）
 ├─ src/
-│  ├─ pages/                  # 画面ごとの入口（.ts）と画面（.vue）
-│  ├─ api/                    # API の呼び出し（型付き）
-│  ├─ lib/                    # 共通の処理
-│  └─ types/                  # API の応答の型
-├─ legacy/                    # 移行前の画面（そのまま dist/ にコピーされる）
-│  ├─ *.html / admin/*.html   # 画面
-│  ├─ css/                    # base.css, components.css, map.css
-│  └─ js/                     # api/・components/・lib/・pages/
+│  ├─ entries/                # 画面ごとの入口のスクリプト（ログインと権限を確認してから画面を表示する）
+│  ├─ pages/                  # 画面（XxxPage.vue）
+│  ├─ components/             # 画面の部品（ヘッダー、ダイアログ、プロフィールの入力欄など）
+│  │  └─ map/                 # マップの描画（部屋・家具・座っている人）
+│  ├─ api/                    # API の呼び出し（client.ts：fetch の共通処理、index.ts：リソースごとの呼び出し）
+│  ├─ lib/                    # 共通の処理（ログイン確認、画面の表示、エラー、お知らせ、マップの計算）
+│  ├─ types/                  # API の入出力の型
+│  └─ styles/                 # base.css, components.css, map.css
 ├─ e2e/                       # 画面の自動テスト（Playwright）
 ├─ deploy/nginx/              # nginx の設定（office-seat/ は公開時もローカルでも使う、sites/ は公開サーバー用）
-├─ scripts/                   # check-legacy.mjs（移行前の画面の確認）、dev.mjs（開発用の起動）、nginx.mjs（ローカルの nginx の起動・停止）
-├─ vite.config.ts             # ビルドの設定（PAGES）、preview の設定（自動テスト用。/api の転送）
+├─ scripts/                   # check-html.mjs（HTML の確認）、dev.mjs（開発用の起動）、nginx.mjs（ローカルの nginx の起動・停止）
+├─ vite.config.ts             # ビルドの設定（PAGES：画面の一覧）、preview の設定（自動テスト用。/api の転送）
 ├─ security-headers.ts        # CSP などのセキュリティヘッダー
 ├─ playwright.config.ts
 └─ package.json / package-lock.json
@@ -68,5 +68,5 @@ my-app-docs/
 - Python：ファイル・関数は `snake_case`、クラスは `PascalCase`。ファイル名は `<リソース>_repository.py` / `<リソース>_service.py`
 - API のパス：複数形の名詞、単語の区切りは `-`（例：`/job-types`）
 - JSON のキー：`snake_case`
-- JS / TS：ファイルは `kebab-case.js` / `kebab-case.ts`、関数・変数は `camelCase`
-- Vue：コンポーネントのファイルは `PascalCase.vue`
+- TS：ファイルは `kebab-case.ts`、関数・変数は `camelCase`
+- Vue：コンポーネントのファイルは `PascalCase.vue`。画面は `XxxPage.vue`
